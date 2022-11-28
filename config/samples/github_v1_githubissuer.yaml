@@ -1,0 +1,12 @@
+apiVersion: github.benda.io/v1
+kind: GithubIssuer
+metadata:
+  labels:
+    app.kubernetes.io/name: githubissuer
+    app.kubernetes.io/instance: githubissuer-sample
+    app.kubernetes.io/part-of: github-issuer
+    app.kuberentes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: github-issuer
+  name: githubissuer-sample
+spec:
+  # TODO(user): Add fields here

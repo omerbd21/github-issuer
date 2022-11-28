@@ -1,0 +1,16 @@
+domain: benda.io
+layout:
+- go.kubebuilder.io/v3
+projectName: github-issuer
+repo: github.com/github-issuer
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: benda.io
+  group: github
+  kind: GithubIssuer
+  path: github.com/github-issuer/api/v1
+  version: v1
+version: "3"
