@@ -18,13 +18,16 @@ package controllers
 
 import (
 	"context"
+	"errors"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	githubv1 "github.com/github-issuer/api/v1"
+	"github.com/sirupsen/logrus"
+	"go.elastic.co/ecslogrus"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 // GithubIssuerReconciler reconciles a GithubIssuer object
@@ -47,9 +50,17 @@ type GithubIssuerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.13.0/pkg/reconcile
 func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := logrus.New()
+	log.SetFormatter(&ecslogrus.Formatter{})
 
-	// TODO(user): your logic here
+	var githubIssuer githubv1.GithubIssuer
+	if err := r.Get(ctx, req.NamespacedName, &githubIssuer); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		log.WithError(errors.New(err.Error())).WithFields(logrus.Fields{"NamespaceLabel": req.NamespacedName}).Error("unable to fetch NamespaceLabel")
+		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
+	}
 
 	return ctrl.Result{}, nil
 }
