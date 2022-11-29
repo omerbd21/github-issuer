@@ -23,9 +23,9 @@ func CreateClient(ctx context.Context) (*github.Client, error) {
 	return github.NewClient(tc), nil
 }
 
-func FetchIssue(user string, repo string, issueTitle string, ctx context.Context, client *github.Client) (*github.Issue, error) {
+func FetchIssue(repo string, issueTitle string, ctx context.Context, client *github.Client) (*github.Issue, error) {
 	opts := github.IssueListByRepoOptions{}
-	issues, _, err := client.Issues.ListByRepo(ctx, user, repo, &opts)
+	issues, _, err := client.Issues.ListByRepo(ctx, os.Getenv("GITHUB_USERNAME"), repo, &opts)
 	if err != nil {
 		return nil, err
 	}
@@ -37,17 +37,17 @@ func FetchIssue(user string, repo string, issueTitle string, ctx context.Context
 	return nil, fmt.Errorf("%v", "The issue wasn't found")
 }
 
-func CreateIssue(user string, repo string, issueTitle string, description string, ctx context.Context, client *github.Client) error {
+func CreateIssue(repo string, issueTitle string, description string, ctx context.Context, client *github.Client) error {
 	req := github.IssueRequest{
 		Title: &issueTitle,
 		Body:  &description,
 	}
-	_, _, err := client.Issues.Create(ctx, user, repo, &req)
+	_, _, err := client.Issues.Create(ctx, os.Getenv("GITHUB_USERNAME"), repo, &req)
 	return err
 }
 
-func UpdateIssue(user string, repo string, issueTitle string, description string, ctx context.Context, client *github.Client) error {
-	issue, err := FetchIssue(user, repo, issueTitle, ctx, client)
+func UpdateIssue(repo string, issueTitle string, description string, ctx context.Context, client *github.Client) error {
+	issue, err := FetchIssue(repo, issueTitle, ctx, client)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func UpdateIssue(user string, repo string, issueTitle string, description string
 		Body:  &description,
 	}
 	if description != *issue.Body {
-		_, _, err = client.Issues.Edit(ctx, user, repo, *issue.Number, &req)
+		_, _, err = client.Issues.Edit(ctx, os.Getenv("GITHUB_USERNAME"), repo, *issue.Number, &req)
 		return err
 	}
 	return err

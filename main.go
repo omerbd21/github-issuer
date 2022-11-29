@@ -20,9 +20,9 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	"context"
-	"fmt"
-	"strings"
+
+	"flag"
+	"os"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -30,9 +30,11 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	githubv1 "github.com/github-issuer/api/v1"
-	githubUtils "github.com/github-issuer/pkg/githubUtils"
+	"github.com/github-issuer/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -49,7 +51,7 @@ func init() {
 }
 
 func main() {
-	/*var metricsAddr string
+	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -111,24 +113,5 @@ func main() {
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
-	} */
-	USERNAME := "omerbd21"
-	REPO := "transfermarkt"
-	ISSUENAME := "test5"
-	DESCRIPTION := "haide"
-	ctx := context.Background()
-	client, err := githubUtils.CreateClient(ctx)
-	if err != nil {
-		fmt.Errorf("%v", "Client could not be created")
-	}
-	_, err = githubUtils.FetchIssue(USERNAME, REPO, ISSUENAME, ctx, client)
-	if err != nil && strings.Contains(err.Error(), "The issue wasn't found") {
-		githubUtils.CreateIssue(USERNAME, REPO, ISSUENAME, DESCRIPTION, ctx, client)
-	} else if err != nil {
-		fmt.Errorf("other error")
-	} else {
-		if err := githubUtils.UpdateIssue(USERNAME, REPO, ISSUENAME, DESCRIPTION, ctx, client); err != nil {
-			fmt.Errorf("Error editing the issue")
-		}
 	}
 }
