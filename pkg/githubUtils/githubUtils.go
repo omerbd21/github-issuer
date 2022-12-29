@@ -52,12 +52,27 @@ func UpdateIssue(repo string, issueTitle string, description string, ctx context
 		return err
 	}
 	req := github.IssueRequest{
-		Title: &issueTitle,
+		Title: issue.Title,
 		Body:  &description,
 	}
 	if description != *issue.Body {
 		_, _, err = client.Issues.Edit(ctx, os.Getenv("GITHUB_USERNAME"), repo, *issue.Number, &req)
 		return err
 	}
+	return err
+}
+
+func DeleteIssue(repo string, issueTitle string, ctx context.Context, client *github.Client) error {
+	state := "closed"
+	issue, err := FetchIssue(repo, issueTitle, ctx, client)
+	if err != nil {
+		return err
+	}
+	req := github.IssueRequest{
+		Title: issue.Title,
+		Body:  issue.Body,
+		State: &state,
+	}
+	_, _, err = client.Issues.Edit(ctx, os.Getenv("GITHUB_USERNAME"), repo, *issue.Number, &req)
 	return err
 }
