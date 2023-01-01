@@ -12,8 +12,8 @@ import (
 func divideUserAndRepo(repo string) map[string]string {
 	split := strings.Split(repo, "/")
 	return map[string]string{
-		"user": split[0],
-		"repo": split[1],
+		"user": split[len(split)-2],
+		"repo": split[len(split)-1],
 	}
 }
 

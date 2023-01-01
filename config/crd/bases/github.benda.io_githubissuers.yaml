@@ -38,8 +38,7 @@ spec:
               description:
                 type: string
               repo:
-                description: Foo is an example field of GithubIssuer. Edit githubissuer_types.go
-                  to remove/update
+                pattern: ^https://github.com/.*/.*$
                 type: string
               title:
                 type: string

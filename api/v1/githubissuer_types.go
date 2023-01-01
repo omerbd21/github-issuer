@@ -28,7 +28,7 @@ type GithubIssuerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of GithubIssuer. Edit githubissuer_types.go to remove/update
+	// +kubebuilder:validation:Pattern="^https://github.com/.*/.*$"
 	Repo        string `json:"repo,omitempty"`
 	Title       string `json:"title,omitempty"`
 	Description string `json:"description,omitempty"`
