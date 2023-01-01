@@ -58,11 +58,13 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var secretName string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&secretName, "secret-name", "github-secret", "The name of the secret of the GitHub credentials.")
 	flag.Parse()
 
 	encoderConfig := ecszap.NewDefaultEncoderConfig()
@@ -99,6 +101,7 @@ func main() {
 	if err = (&controllers.GithubIssuerReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Secret: secretName,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GithubIssuer")
 		os.Exit(1)

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -30,6 +31,7 @@ import (
 	"github.com/github-issuer/pkg/githubUtils"
 	"github.com/go-logr/logr"
 	"github.com/google/go-github/github"
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -39,9 +41,9 @@ import (
 type GithubIssuerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Secret string
 }
 
-const conditionParametersFile = "conditionParameters.yaml"
 const FinalizerName = "github.benda.io/finalizer"
 
 func (r *GithubIssuerReconciler) updateConditions(ctx context.Context, githubIssuer *githubv1.GithubIssuer, conditionType string, reason string, msg string, status metav1.ConditionStatus) error {
@@ -67,6 +69,15 @@ func (r *GithubIssuerReconciler) updateConditions(ctx context.Context, githubIss
 func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
+	var secret corev1.Secret
+	secretName := types.NamespacedName{Namespace: req.Namespace, Name: r.Secret}
+	if err := r.Get(ctx, secretName, &secret); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "Unable to fetch GitHub secret", "secret", secretName)
+		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
+	}
 	var githubIssuer githubv1.GithubIssuer
 	if err := r.Get(ctx, req.NamespacedName, &githubIssuer); err != nil {
 		if k8serrors.IsNotFound(err) {
@@ -75,7 +86,7 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		log.Error(err, "Unable to fetch GithubIssuer", "githubIssuer", req.NamespacedName.String())
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
-	githubClient, err := githubUtils.CreateClient(ctx)
+	githubClient, err := githubUtils.CreateClient(ctx, string(secret.Data["password"][:]))
 	if err != nil {
 		log.Error(err, "Unable to create GitHub Client", "githubIssuer", req.NamespacedName.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)

@@ -3,20 +3,23 @@ package githubUtils
 import (
 	"context"
 	"fmt"
-	"os"
+	"strings"
 
 	"github.com/google/go-github/github"
-	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 )
 
-func CreateClient(ctx context.Context) (*github.Client, error) {
-	err := godotenv.Load(".env")
-	if err != nil {
-		return nil, err
+func divideUserAndRepo(repo string) map[string]string {
+	split := strings.Split(repo, "/")
+	return map[string]string{
+		"user": split[0],
+		"repo": split[1],
 	}
+}
+
+func CreateClient(ctx context.Context, token string) (*github.Client, error) {
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: os.Getenv("GITHUB_TOKEN")},
+		&oauth2.Token{AccessToken: token},
 	)
 	tc := oauth2.NewClient(ctx, ts)
 
@@ -24,8 +27,9 @@ func CreateClient(ctx context.Context) (*github.Client, error) {
 }
 
 func FetchIssue(repo string, issueTitle string, ctx context.Context, client *github.Client) (*github.Issue, error) {
+	githubAuth := divideUserAndRepo(repo)
 	opts := github.IssueListByRepoOptions{}
-	issues, _, err := client.Issues.ListByRepo(ctx, os.Getenv("GITHUB_USERNAME"), repo, &opts)
+	issues, _, err := client.Issues.ListByRepo(ctx, githubAuth["user"], githubAuth["repo"], &opts)
 	if err != nil {
 		return nil, err
 	}
@@ -38,15 +42,17 @@ func FetchIssue(repo string, issueTitle string, ctx context.Context, client *git
 }
 
 func CreateIssue(repo string, issueTitle string, description string, ctx context.Context, client *github.Client) error {
+	githubAuth := divideUserAndRepo(repo)
 	req := github.IssueRequest{
 		Title: &issueTitle,
 		Body:  &description,
 	}
-	_, _, err := client.Issues.Create(ctx, os.Getenv("GITHUB_USERNAME"), repo, &req)
+	_, _, err := client.Issues.Create(ctx, githubAuth["user"], githubAuth["repo"], &req)
 	return err
 }
 
 func UpdateIssue(repo string, issueTitle string, description string, ctx context.Context, client *github.Client) error {
+	githubAuth := divideUserAndRepo(repo)
 	issue, err := FetchIssue(repo, issueTitle, ctx, client)
 	if err != nil {
 		return err
@@ -56,13 +62,14 @@ func UpdateIssue(repo string, issueTitle string, description string, ctx context
 		Body:  &description,
 	}
 	if description != *issue.Body {
-		_, _, err = client.Issues.Edit(ctx, os.Getenv("GITHUB_USERNAME"), repo, *issue.Number, &req)
+		_, _, err = client.Issues.Edit(ctx, githubAuth["user"], githubAuth["repo"], *issue.Number, &req)
 		return err
 	}
 	return err
 }
 
 func DeleteIssue(repo string, issueTitle string, ctx context.Context, client *github.Client) error {
+	githubAuth := divideUserAndRepo(repo)
 	state := "closed"
 	issue, err := FetchIssue(repo, issueTitle, ctx, client)
 	if err != nil {
@@ -73,6 +80,6 @@ func DeleteIssue(repo string, issueTitle string, ctx context.Context, client *gi
 		Body:  issue.Body,
 		State: &state,
 	}
-	_, _, err = client.Issues.Edit(ctx, os.Getenv("GITHUB_USERNAME"), repo, *issue.Number, &req)
+	_, _, err = client.Issues.Edit(ctx, githubAuth["user"], githubAuth["repo"], *issue.Number, &req)
 	return err
 }
