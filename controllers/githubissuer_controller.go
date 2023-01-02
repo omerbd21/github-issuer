@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	githubv1 "github.com/github-issuer/api/v1"
-	"github.com/github-issuer/pkg/githubUtils"
+	"github.com/github-issuer/pkg/github_utils"
 	"github.com/go-logr/logr"
 	"github.com/google/go-github/github"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -76,7 +76,7 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		log.Error(err, "Unable to fetch GithubIssuer", "githubIssuer", req.NamespacedName.String())
 		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
 	}
-	githubClient, err := githubUtils.CreateClient(ctx, os.Getenv("GITHUB_PASSWORD"))
+	githubClient, err := github_utils.CreateClient(ctx, os.Getenv("GITHUB_PASSWORD"))
 	if err != nil {
 		log.Error(err, "Unable to create GitHub Client", "githubIssuer", req.NamespacedName.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -95,9 +95,9 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{}, nil
 		}
 	}
-	issue, err := githubUtils.FetchIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, ctx, githubClient)
+	issue, err := github_utils.FetchIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, ctx, githubClient)
 	if err != nil && strings.Contains(err.Error(), "The issue wasn't found") {
-		err = githubUtils.CreateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, githubClient)
+		err = github_utils.CreateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, githubClient)
 		if err != nil {
 			err = r.updateConditions(ctx, &githubIssuer, "IssueCreated", "IssueCreated", "Issue was created", metav1.ConditionTrue)
 			if err != nil {
@@ -113,7 +113,7 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		log.Error(err, "Unable to fetch the specific issue in repo", "githubIssuer", req.NamespacedName.String(), "repo", githubIssuer.Spec.Repo, "issue", issue)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	} else {
-		if err := githubUtils.UpdateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, githubClient); err != nil {
+		if err := github_utils.UpdateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, githubClient); err != nil {
 			err = r.updateConditions(ctx, &githubIssuer, "IssueUpdated", "IssueUpdated", "Issue was updated, issue status: "+*issue.State, metav1.ConditionTrue)
 			if err != nil {
 				log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
@@ -133,7 +133,7 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *GithubIssuerReconciler) deleteIssue(ctx context.Context, log logr.Logger, githubIssuer *githubv1.GithubIssuer, githubClient *github.Client) (ctrl.Result, error) {
 	repo := githubIssuer.Spec.Repo
 	issue := githubIssuer.Spec.Title
-	if err := githubUtils.DeleteIssue(repo, issue, ctx, githubClient); err != nil {
+	if err := github_utils.DeleteIssue(repo, issue, ctx, githubClient); err != nil {
 		log.Error(err, "unable to delete issue from github", "githubIssuer", githubIssuer.Name, "issue", issue)
 		return ctrl.Result{Requeue: true}, err
 	}

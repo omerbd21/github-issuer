@@ -1,4 +1,4 @@
-package githubUtils
+package github_utils
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 func divideUserAndRepo(repo string) map[string]string {
 	split := strings.Split(repo, "/")
+
 	return map[string]string{
 		"user": split[len(split)-2],
 		"repo": split[len(split)-1],
