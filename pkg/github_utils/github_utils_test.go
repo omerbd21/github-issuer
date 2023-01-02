@@ -10,7 +10,20 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const (
+	REGULAR_URL       = "https://github.com/test-user/test-repo"
+	ERROR_URL         = "https://github.com/no-user/no-repo"
+	USER              = "test-user"
+	REPO              = "test-repo"
+	ISSUE             = "test-title"
+	ERROR_ISSUE       = "no-title"
+	DESCRIPTION       = "test-body"
+	ERROR_DESCRIPTION = "no-body"
+	NUMBER            = 1
+)
+
 var _ = Describe("Github Utils", func() {
+
 	Context("get the user and the repo from url", func() {
 		It("Should return the correct user and repo", func() {
 			url := "https://github.com/test-user/test-repo"
@@ -22,43 +35,43 @@ var _ = Describe("Github Utils", func() {
 		It("Should fetch the issue", func() {
 			c := setupFakeClient("GET")
 			ctx := context.Background()
-			_, err := FetchIssue("https://github.com/test-user/test-repo", "test-title", ctx, c)
+			_, err := FetchIssue(REGULAR_URL, ISSUE, ctx, c)
 			Expect(err).Should(BeNil())
 		})
 		It("Should create the issue", func() {
 			c := setupFakeClient("POST")
 			ctx := context.Background()
-			err := CreateIssue("https://github.com/test-user/test-repo", "test-title", "test-body", ctx, c)
+			err := CreateIssue(REGULAR_URL, ISSUE, DESCRIPTION, ctx, c)
 			Expect(err).Should(BeNil())
 		})
 		It("Should delete the issue", func() {
 			c := setupFakeClient("PATCH")
 			ctx := context.Background()
-			err := UpdateIssue("https://github.com/test-user/test-repo", "test-title", "test-body2", ctx, c)
+			err := UpdateIssue(REGULAR_URL, ISSUE, DESCRIPTION, ctx, c)
 			Expect(err).Should(BeNil())
 		})
 		It("Should delete the issue", func() {
 			c := setupFakeClient("PATCH")
 			ctx := context.Background()
-			err := DeleteIssue("https://github.com/test-user/test-repo", "test-title", ctx, c)
+			err := DeleteIssue(REGULAR_URL, ISSUE, ctx, c)
 			Expect(err).Should(BeNil())
 		})
 		It("Should return an error for get", func() {
 			c := setupFakeClient("GET_ERROR")
 			ctx := context.Background()
-			_, err := FetchIssue("https://github.com/no-user/no-repo", "no-issue", ctx, c)
+			_, err := FetchIssue(ERROR_URL, ERROR_ISSUE, ctx, c)
 			Expect(err).ShouldNot(BeNil())
 		})
 		It("Should return an error for create", func() {
 			c := setupFakeClient("CREATE_ERROR")
 			ctx := context.Background()
-			err := CreateIssue("https://github.com/no-user/no-repo", "no-issue", "no-body", ctx, c)
+			err := CreateIssue(ERROR_URL, ERROR_ISSUE, ERROR_DESCRIPTION, ctx, c)
 			Expect(err).ShouldNot(BeNil())
 		})
 		It("Should return an error for update", func() {
 			c := setupFakeClient("UPDATE_ERROR")
 			ctx := context.Background()
-			err := UpdateIssue("https://github.com/no-user/no-repo", "no-issue", "no-body", ctx, c)
+			err := UpdateIssue(ERROR_URL, ERROR_ISSUE, ERROR_DESCRIPTION, ctx, c)
 			Expect(err).ShouldNot(BeNil())
 		})
 
@@ -73,13 +86,13 @@ func setupFakeClient(method string) *github.Client {
 				mock.GetReposIssuesByOwnerByRepo,
 				[]github.Issue{
 					{
-						Title:  github.String("test-title"),
-						Body:   github.String("test-body"),
-						Number: github.Int(1),
+						Title:  github.String(ISSUE),
+						Body:   github.String(DESCRIPTION),
+						Number: github.Int(NUMBER),
 						Repository: &github.Repository{
-							Name: github.String("test-repo"),
+							Name: github.String(REPO),
 							Owner: &github.User{
-								Name: github.String("test-user"),
+								Name: github.String(USER),
 							},
 						},
 					},
@@ -88,13 +101,13 @@ func setupFakeClient(method string) *github.Client {
 			mock.WithRequestMatch(
 				mock.PatchReposIssuesByOwnerByRepoByIssueNumber,
 				github.Issue{
-					Title:  github.String("test-title"),
-					Body:   github.String("test-body"),
-					Number: github.Int(1),
+					Title:  github.String(ISSUE),
+					Body:   github.String(DESCRIPTION),
+					Number: github.Int(NUMBER),
 					Repository: &github.Repository{
-						Name: github.String("test-repo"),
+						Name: github.String(REPO),
 						Owner: &github.User{
-							Name: github.String("test-user"),
+							Name: github.String(USER),
 						},
 					},
 				},
@@ -106,13 +119,13 @@ func setupFakeClient(method string) *github.Client {
 				mock.GetReposIssuesByOwnerByRepo,
 				[]github.Issue{
 					{
-						Title:  github.String("test-title"),
-						Body:   github.String("test-body"),
-						Number: github.Int(1),
+						Title:  github.String(ISSUE),
+						Body:   github.String(DESCRIPTION),
+						Number: github.Int(NUMBER),
 						Repository: &github.Repository{
-							Name: github.String("test-repo"),
+							Name: github.String(REPO),
 							Owner: &github.User{
-								Name: github.String("test-user"),
+								Name: github.String(USER),
 							},
 						},
 					},
@@ -124,12 +137,13 @@ func setupFakeClient(method string) *github.Client {
 			mock.WithRequestMatch(
 				mock.PostReposIssuesByOwnerByRepo,
 				github.Issue{
-					Title: github.String("test-title"),
-					Body:  github.String("test-body"),
+					Title:  github.String(ISSUE),
+					Body:   github.String(DESCRIPTION),
+					Number: github.Int(NUMBER),
 					Repository: &github.Repository{
-						Name: github.String("test-repo"),
+						Name: github.String(REPO),
 						Owner: &github.User{
-							Name: github.String("test-user"),
+							Name: github.String(USER),
 						},
 					},
 				},
@@ -142,7 +156,7 @@ func setupFakeClient(method string) *github.Client {
 					mock.WriteError(
 						w,
 						http.StatusInternalServerError,
-						"The issue can't be created",
+						"The issue can't be fetched",
 					)
 				}),
 			),
@@ -168,7 +182,7 @@ func setupFakeClient(method string) *github.Client {
 					mock.WriteError(
 						w,
 						http.StatusInternalServerError,
-						"The issue can't be created",
+						"The issue can't be updated",
 					)
 				}),
 			),
