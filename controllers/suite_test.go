@@ -103,6 +103,102 @@ var _ = BeforeSuite(func() {
 				},
 			},
 		),
+		mock.WithRequestMatch(
+			mock.GetReposIssuesByOwnerByRepo,
+			[]github.Issue{
+				{
+					Title:  github.String(ISSUE),
+					Body:   github.String(DESCRIPTION),
+					Number: github.Int(NUMBER),
+					Repository: &github.Repository{
+						Name: github.String(REPO),
+						Owner: &github.User{
+							Name: github.String(USER),
+						},
+					},
+				},
+			},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposIssuesByOwnerByRepo,
+			[]github.Issue{
+				{
+					Title:  github.String(ISSUE),
+					Body:   github.String(DESCRIPTION),
+					Number: github.Int(NUMBER),
+					Repository: &github.Repository{
+						Name: github.String(REPO),
+						Owner: &github.User{
+							Name: github.String(USER),
+						},
+					},
+				},
+			},
+		),
+		mock.WithRequestMatch(
+			mock.PatchReposIssuesByOwnerByRepoByIssueNumber,
+			github.Issue{
+				Title:  github.String(ISSUE),
+				Body:   github.String(DESCRIPTION),
+				Number: github.Int(NUMBER),
+				Repository: &github.Repository{
+					Name: github.String(REPO),
+					Owner: &github.User{
+						Name: github.String(USER),
+					},
+				},
+			},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposIssuesByOwnerByRepo,
+			[]github.Issue{},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposIssuesByOwnerByRepo,
+			[]github.Issue{
+				{
+					Title:  github.String(ISSUE),
+					Body:   github.String(DESCRIPTION),
+					Number: github.Int(NUMBER),
+					Repository: &github.Repository{
+						Name: github.String(REPO),
+						Owner: &github.User{
+							Name: github.String(USER),
+						},
+					},
+				},
+			},
+		),
+		mock.WithRequestMatch(
+			mock.GetReposIssuesByOwnerByRepo,
+			[]github.Issue{
+				{
+					Title:  github.String(ISSUE),
+					Body:   github.String(DESCRIPTION),
+					Number: github.Int(NUMBER),
+					Repository: &github.Repository{
+						Name: github.String(REPO),
+						Owner: &github.User{
+							Name: github.String(USER),
+						},
+					},
+				},
+			},
+		),
+		mock.WithRequestMatch(
+			mock.PatchReposIssuesByOwnerByRepoByIssueNumber,
+			github.Issue{
+				Title:  github.String(ISSUE),
+				Body:   github.String(DESCRIPTION + "2"),
+				Number: github.Int(NUMBER),
+				Repository: &github.Repository{
+					Name: github.String(REPO),
+					Owner: &github.User{
+						Name: github.String(USER),
+					},
+				},
+			},
+		),
 	)
 	nclient := github.NewClient(mockedHTTPClient)
 	opts := github.IssueListByRepoOptions{}
