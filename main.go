@@ -21,6 +21,7 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 
+	"context"
 	"flag"
 	"os"
 	"time"
@@ -37,6 +38,7 @@ import (
 
 	githubv1 "github.com/github-issuer/api/v1"
 	"github.com/github-issuer/controllers"
+	"github.com/github-issuer/pkg/github_utils"
 	"github.com/go-logr/zapr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	//+kubebuilder:scaffold:imports
@@ -58,13 +60,11 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var secretName string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.StringVar(&secretName, "secret-name", "github-secret", "The name of the secret of the GitHub credentials.")
 	flag.Parse()
 
 	encoderConfig := ecszap.NewDefaultEncoderConfig()
@@ -86,11 +86,16 @@ func main() {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
-
+	ctx := context.Background()
+	client, err := github_utils.CreateClient(ctx, os.Getenv("GITHUB_PASSWORD"))
+	if err != nil {
+		setupLog.Error(err, "unable to start GitHub client")
+		os.Exit(1)
+	}
 	if err = (&controllers.GithubIssuerReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Secret: secretName,
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		GitHubClient: client,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GithubIssuer")
 		os.Exit(1)

@@ -32,14 +32,14 @@ func FetchIssue(repo string, issueTitle string, ctx context.Context, client *git
 	opts := github.IssueListByRepoOptions{}
 	issues, _, err := client.Issues.ListByRepo(ctx, githubAuth["user"], githubAuth["repo"], &opts)
 	if err != nil {
-		return nil, err
+		return &github.Issue{}, err
 	}
 	for _, issue := range issues {
 		if *issue.Title == issueTitle {
 			return issue, nil
 		}
 	}
-	return nil, fmt.Errorf("%v", "The issue wasn't found")
+	return &github.Issue{}, fmt.Errorf("%v", "The issue wasn't found")
 }
 
 func CreateIssue(repo string, issueTitle string, description string, ctx context.Context, client *github.Client) error {

@@ -18,7 +18,7 @@ package controllers
 
 import (
 	"context"
-	"os"
+	"fmt"
 	"strings"
 	"time"
 
@@ -39,8 +39,8 @@ import (
 // GithubIssuerReconciler reconciles a GithubIssuer object
 type GithubIssuerReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	Secret string
+	Scheme       *runtime.Scheme
+	GitHubClient *github.Client
 }
 
 const FinalizerName = "github.benda.io/finalizer"
@@ -74,11 +74,6 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Unable to fetch GithubIssuer", "githubIssuer", req.NamespacedName.String())
-		return ctrl.Result{Requeue: true}, client.IgnoreNotFound(err)
-	}
-	githubClient, err := github_utils.CreateClient(ctx, os.Getenv("GITHUB_PASSWORD"))
-	if err != nil {
-		log.Error(err, "Unable to create GitHub Client", "githubIssuer", req.NamespacedName.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	if githubIssuer.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -89,31 +84,34 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	} else {
 		if controllerutil.ContainsFinalizer(&githubIssuer, FinalizerName) {
-			if res, err := r.deleteIssue(ctx, log, &githubIssuer, githubClient); err != nil {
+			if res, err := r.deleteIssue(ctx, log, &githubIssuer, r.GitHubClient); err != nil {
 				return res, err
 			}
 			return ctrl.Result{}, nil
 		}
 	}
-	issue, err := github_utils.FetchIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, ctx, githubClient)
-	if err != nil && strings.Contains(err.Error(), "The issue wasn't found") {
-		err = github_utils.CreateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, githubClient)
-		if err != nil {
-			err = r.updateConditions(ctx, &githubIssuer, "IssueCreated", "IssueCreated", "Issue was created", metav1.ConditionTrue)
+	issue, err := github_utils.FetchIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, ctx, r.GitHubClient)
+	if err != nil {
+		fmt.Println(err)
+		if strings.Contains(err.Error(), "The issue wasn't found") {
+			err = github_utils.CreateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, r.GitHubClient)
 			if err != nil {
-				log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
+				err = r.updateConditions(ctx, &githubIssuer, "IssueCreated", "IssueCreated", "Issue was created", metav1.ConditionTrue)
+				if err != nil {
+					log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
+				}
+			} else {
+				err = r.updateConditions(ctx, &githubIssuer, "IssueNotCreated", "IssueNotCreated", "Issue was not created", metav1.ConditionFalse)
+				if err != nil {
+					log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
+				}
 			}
 		} else {
-			err = r.updateConditions(ctx, &githubIssuer, "IssueNotCreated", "IssueNotCreated", "Issue was not created", metav1.ConditionFalse)
-			if err != nil {
-				log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
-			}
+			log.Error(err, "Unable to fetch the specific issue in repo", "githubIssuer", req.NamespacedName.String(), "repo", githubIssuer.Spec.Repo, "issue", issue)
+			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
-	} else if err != nil {
-		log.Error(err, "Unable to fetch the specific issue in repo", "githubIssuer", req.NamespacedName.String(), "repo", githubIssuer.Spec.Repo, "issue", issue)
-		return ctrl.Result{}, client.IgnoreNotFound(err)
 	} else {
-		if err := github_utils.UpdateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, githubClient); err != nil {
+		if err := github_utils.UpdateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, r.GitHubClient); err != nil {
 			err = r.updateConditions(ctx, &githubIssuer, "IssueUpdated", "IssueUpdated", "Issue was updated, issue status: "+*issue.State, metav1.ConditionTrue)
 			if err != nil {
 				log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
