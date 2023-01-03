@@ -70,7 +70,13 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: controller:latest
+        image: omerbd/github-issuer:latest
+        env:
+        - name: GITHUB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: github-secret
+              key: password
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
