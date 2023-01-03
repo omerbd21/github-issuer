@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -92,7 +91,6 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 	issue, err := github_utils.FetchIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, ctx, r.GitHubClient)
 	if err != nil {
-		fmt.Println(err)
 		if strings.Contains(err.Error(), "The issue wasn't found") {
 			err = github_utils.CreateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, r.GitHubClient)
 			if err != nil {
