@@ -18,8 +18,8 @@ package controllers
 
 import (
 	"context"
+	"strconv"
 	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,6 +31,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/go-github/github"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -44,9 +45,9 @@ type GithubIssuerReconciler struct {
 
 const FinalizerName = "github.benda.io/finalizer"
 
-func (r *GithubIssuerReconciler) updateConditions(ctx context.Context, githubIssuer *githubv1.GithubIssuer, conditionType string, reason string, msg string, status metav1.ConditionStatus) error {
-	condition := metav1.Condition{Type: conditionType, Status: status, Reason: reason, Message: msg, LastTransitionTime: metav1.Time{Time: time.Now()}}
-	githubIssuer.Status.Conditions = append(githubIssuer.Status.Conditions, condition)
+func (r *GithubIssuerReconciler) updateConditions(ctx context.Context, githubIssuer *githubv1.GithubIssuer, conditionType string, status metav1.ConditionStatus) error {
+	condition := metav1.Condition{Type: conditionType, Status: status, Reason: "Unknown"}
+	meta.SetStatusCondition(&githubIssuer.Status.Conditions, condition)
 	return r.Client.Status().Update(ctx, githubIssuer)
 
 }
@@ -93,13 +94,16 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if err != nil {
 		if strings.Contains(err.Error(), "The issue wasn't found") {
 			err = github_utils.CreateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, r.GitHubClient)
-			if err != nil {
-				err = r.updateConditions(ctx, &githubIssuer, "IssueCreated", "IssueCreated", "Issue was created", metav1.ConditionTrue)
+			if err == nil {
+				err = r.updateConditions(ctx, &githubIssuer, "hasPR", metav1.ConditionStatus(strconv.FormatBool(issue.PullRequestLinks != nil)))
+				if err != nil {
+					log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
+				}
+				err = r.updateConditions(ctx, &githubIssuer, "isOpen", metav1.ConditionStatus(strconv.FormatBool(issue.GetState() != "closed")))
 				if err != nil {
 					log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
 				}
 			} else {
-				err = r.updateConditions(ctx, &githubIssuer, "IssueNotCreated", "IssueNotCreated", "Issue was not created", metav1.ConditionFalse)
 				if err != nil {
 					log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
 				}
@@ -110,17 +114,17 @@ func (r *GithubIssuerReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 	} else {
 		if err := github_utils.UpdateIssue(githubIssuer.Spec.Repo, githubIssuer.Spec.Title, githubIssuer.Spec.Description, ctx, r.GitHubClient); err != nil {
-			err = r.updateConditions(ctx, &githubIssuer, "IssueUpdated", "IssueUpdated", "Issue was updated, issue status: "+*issue.State, metav1.ConditionTrue)
+			err = r.updateConditions(ctx, &githubIssuer, "hasPR", metav1.ConditionStatus(strconv.FormatBool(issue.PullRequestLinks != nil)))
 			if err != nil {
 				log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
-				err = r.updateConditions(ctx, &githubIssuer, "IssueNotUpdated", "IssueNotUpdated", "Issue was not updated", metav1.ConditionTrue)
-				if err != nil {
-					log.Info(err.Error())
-				}
-				log.Error(err, "Unable to update the issue", "githubIssuer", req.NamespacedName.String(), "repo", githubIssuer.Spec.Repo, "issue", issue)
 			}
-			return ctrl.Result{}, client.IgnoreNotFound(err)
+			err = r.updateConditions(ctx, &githubIssuer, "isOpen", metav1.ConditionStatus(strconv.FormatBool(issue.GetState() != "closed")))
+			if err != nil {
+				log.Error(err, "Unable to update githubIssuer status", "githubIssuer", req.NamespacedName.String(), "issue", issue)
+			}
+			log.Error(err, "Unable to update the issue", "githubIssuer", req.NamespacedName.String(), "repo", githubIssuer.Spec.Repo, "issue", issue)
 		}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	return ctrl.Result{}, nil
